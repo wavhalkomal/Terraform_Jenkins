@@ -1,4 +1,3 @@
-
 pipeline {
     agent any
 
@@ -6,22 +5,24 @@ pipeline {
         booleanParam(
             name: 'autoApprove',
             defaultValue: false,
-            description: 'Automatically apply the Terraform plan?'
+            description: 'Automatically run apply after generating plan?'
         )
+    }
+
+    environment {
+        AWS_DEFAULT_REGION = 'us-east-2'
+        TF_IN_AUTOMATION = 'true'
     }
 
     stages {
 
         stage('Checkout') {
             steps {
-                dir('terraform') {
-                    git branch: 'main',
-                        url: 'https://github.com/yeshwanthlm/Terraform-Jenkins.git'
-                }
+                checkout scm
             }
         }
 
-        stage('Verify AWS Connection') {
+        stage('Verify AWS Credentials') {
             steps {
                 withAWS(
                     credentials: 'aws-jenkins-terraform',
@@ -32,41 +33,41 @@ pipeline {
             }
         }
 
-        stage('Terraform Plan') {
+        stage('Plan') {
             steps {
                 withAWS(
                     credentials: 'aws-jenkins-terraform',
                     region: 'us-east-2'
                 ) {
-                    dir('terraform') {
-                        sh '''
-                            terraform init -input=false
-                            terraform validate
-                            terraform plan -input=false -out=tfplan
-                            terraform show -no-color tfplan > tfplan.txt
-                        '''
-                    }
+                    sh '''
+                        terraform init -input=false
+                        terraform validate
+                        terraform plan -input=false -out=tfplan
+                        terraform show -no-color tfplan > tfplan.txt
+                    '''
                 }
             }
         }
 
         stage('Approval') {
             when {
-                expression { !params.autoApprove }
+                expression {
+                    !params.autoApprove
+                }
             }
 
             steps {
                 script {
-                    def plan = readFile('terraform/tfplan.txt')
+                    def plan = readFile('tfplan.txt')
 
                     input(
-                        message: 'Review the Terraform plan. Apply changes?',
+                        message: 'Do you want to apply the Terraform plan?',
                         ok: 'Apply',
                         parameters: [
                             text(
                                 name: 'Plan',
-                                defaultValue: plan,
-                                description: 'Review the proposed changes'
+                                description: 'Review the Terraform plan',
+                                defaultValue: plan
                             )
                         ]
                     )
@@ -74,15 +75,13 @@ pipeline {
             }
         }
 
-        stage('Terraform Apply') {
+        stage('Apply') {
             steps {
                 withAWS(
                     credentials: 'aws-jenkins-terraform',
                     region: 'us-east-2'
                 ) {
-                    dir('terraform') {
-                        sh 'terraform apply -input=false tfplan'
-                    }
+                    sh 'terraform apply -input=false tfplan'
                 }
             }
         }
