@@ -1,0 +1,106 @@
+// Separate, explicitly configured CloudLaunch CD job. Never run on PR branches.
+// Configure Pipeline from SCM: main branch, Script Path Jenkinsfile.cloudlaunch.cd.
+// Required: AWS credential aws-jenkins-terraform (withAWS plugin), precreated
+// private S3 bucket supplied as job environment CLOUDLAUNCH_STATE_BUCKET.
+// Existing terraform-standalone job and local state are NOT used.
+pipeline {
+    agent any
+    options {
+        skipDefaultCheckout(true)
+        disableConcurrentBuilds()
+        timestamps()
+        timeout(time: 60, unit: 'MINUTES')
+    }
+    parameters {
+        string(name: 'REQUEST_FILE', defaultValue: '', description: 'Approved JSON in requests/ e.g. requests/REQ-1001.json')
+    }
+    environment {
+        AWS_REGION = 'us-east-1'
+        TF_IN_AUTOMATION = 'true'
+        TF_INPUT = 'false'
+        CLOUDLAUNCH_STATE_REGION = 'us-east-1'
+    }
+    stages {
+        stage('Checkout approved main') {
+            steps {
+                checkout scm
+                script {
+                    if (env.BRANCH_NAME && env.BRANCH_NAME != 'main') {
+                        error('CD is allowed only from main')
+                    }
+                    if (!(params.REQUEST_FILE ==~ /^requests\/[A-Za-z0-9_.-]+\.json$/)) {
+                        error('Set REQUEST_FILE to one JSON file in requests/; no paths or shell interpolation')
+                    }
+                    if (!fileExists(params.REQUEST_FILE)) { error('Request JSON does not exist') }
+                    if (!env.CLOUDLAUNCH_STATE_BUCKET?.trim()) {
+                        error('Configure CLOUDLAUNCH_STATE_BUCKET (private pre-existing S3 bucket)')
+                    }
+                    env.CLOUDLAUNCH_REQUEST_FILE = params.REQUEST_FILE
+                }
+            }
+        }
+        stage('Tests and validation') {
+            steps {
+                sh 'python3 -m unittest discover -s tests -v'
+                sh 'terraform -chdir=infra/cloudlaunch_ec2 fmt -check'
+                sh 'terraform -chdir=infra/cloudlaunch_ec2 init -backend=false -input=false -no-color'
+                sh 'terraform -chdir=infra/cloudlaunch_ec2 validate -no-color'
+                sh 'python3 -m cloudlaunch_cd.workflow validate --file "$CLOUDLAUNCH_REQUEST_FILE"'
+            }
+        }
+        stage('AWS: block already provisioned') {
+            steps {
+                withAWS(credentials: 'aws-jenkins-terraform', region: 'us-east-1') {
+                    sh 'python3 -m cloudlaunch_cd.workflow check-aws --file "$CLOUDLAUNCH_REQUEST_FILE"'
+                }
+            }
+        }
+        stage('Prepare independent remote state and Terraform plan') {
+            steps {
+                script {
+                    env.CLOUDLAUNCH_WORKDIR = "${pwd(tmp: true)}/cloudlaunch-${env.BUILD_NUMBER}"
+                }
+                sh '''
+                    set -eu
+                    mkdir -p "$CLOUDLAUNCH_WORKDIR"
+                    python3 -m cloudlaunch_cd.workflow prepare --file "$CLOUDLAUNCH_REQUEST_FILE" --output-dir "$CLOUDLAUNCH_WORKDIR"
+                    cp infra/cloudlaunch_ec2/*.tf "$CLOUDLAUNCH_WORKDIR/"
+                '''
+                withAWS(credentials: 'aws-jenkins-terraform', region: 'us-east-1') {
+                    sh '''
+                        set -eu
+                        cd "$CLOUDLAUNCH_WORKDIR"
+                        terraform init -backend-config=backend.hcl -input=false -no-color
+                        terraform validate -no-color
+                        terraform plan -input=false -out=tfplan -no-color
+                        terraform show -json tfplan > tfplan.json
+                    '''
+                }
+                sh 'python3 -m cloudlaunch_cd.plan_guard "$CLOUDLAUNCH_WORKDIR/tfplan.json"'
+            }
+        }
+        stage('Human approval before AWS creation') {
+            steps {
+                input message: "Review plan: exactly one new EC2 will be created. Approve ${params.REQUEST_FILE}?", ok: 'Approve EC2 creation', submitter: 'kwavhal'
+            }
+        }
+        stage('Final AWS duplicate check and apply') {
+            steps {
+                withAWS(credentials: 'aws-jenkins-terraform', region: 'us-east-1') {
+                    sh '''
+                        set -eu
+                        python3 -m cloudlaunch_cd.workflow check-aws --file "$CLOUDLAUNCH_REQUEST_FILE"
+                        cd "$CLOUDLAUNCH_WORKDIR"
+                        terraform apply -input=false -no-color tfplan
+                        terraform output -json
+                    '''
+                }
+            }
+        }
+    }
+    post {
+        success { echo 'CloudLaunch CD success: verify EC2 tags and Terraform outputs.' }
+        failure { echo 'CloudLaunch CD blocked or failed. See earlier stage for AWS match details.' }
+        aborted { echo 'Approval was declined or timed out: no apply performed.' }
+    }
+}
