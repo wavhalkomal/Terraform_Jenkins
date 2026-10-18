@@ -19,6 +19,7 @@ pipeline {
         TF_IN_AUTOMATION = 'true'
         TF_INPUT = 'false'
         CLOUDLAUNCH_STATE_REGION = 'us-east-1'
+        CLOUDLAUNCH_STATE_BUCKET = 'cloudlaunch-tfstate-562169195386-2026'
     }
     stages {
         stage('Checkout approved main') {
