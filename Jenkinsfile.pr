@@ -15,6 +15,8 @@ pipeline {
     stages {
         stage('Checkout PR') {
             steps {
+                // Safe only because this job uses its own validation workspace.
+                deleteDir()
                 checkout scm
             }
         }
