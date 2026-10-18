@@ -11,7 +11,7 @@ pipeline {
     // Requires Jenkins GitHub plugin and a reachable /github-webhook/ endpoint.
     // For localhost-only Jenkins, use Poll SCM until a secure webhook endpoint exists.
     triggers {
-        githubPush()
+        pollSCM('H/2 * * * *')
     }
 
     environment {
