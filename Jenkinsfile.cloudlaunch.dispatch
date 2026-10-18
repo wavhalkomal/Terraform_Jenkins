@@ -53,7 +53,7 @@ pipeline {
                         script: "git diff --name-only --diff-filter=A '${previous}' HEAD -- requests/",
                         returnStdout: true
                     ).trim()
-                    def files = changed ? changed.split('\\n').findAll {
+                    def files = changed ? changed.readLines().findAll {
                         it ==~ /^requests\\/[A-Za-z0-9_.-]+\\.json$/
                     } : []
                     echo "New request files to dispatch: ${files}"
