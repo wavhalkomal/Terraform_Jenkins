@@ -1,20 +1,29 @@
-"""Local CloudLaunch request demonstration. Does not call AWS or Jenkins."""
+"""Local CloudLaunch command line tool: no AWS/Jenkins provisioning actions."""
 import argparse
 import json
 from .requests import submit_request, list_records, duplicate_report
+from .review import review_request
 
 def main():
     parser = argparse.ArgumentParser(description="CloudLaunch request prototype")
-    parser.add_argument("command", choices=["submit", "list", "duplicates"])
+    parser.add_argument("command", choices=["submit", "list", "duplicates", "review"])
     parser.add_argument("--db", default="cloudlaunch_demo.sqlite3")
     parser.add_argument("--file", help="JSON request file (submit only)")
     parser.add_argument("--key", help="Unique submission token (submit only)")
+    parser.add_argument("--request-id", help="Request ID to review")
+    parser.add_argument("--decision", choices=["approve", "reject"])
+    parser.add_argument("--reviewer", help="Reviewer label for local demo (not authenticated)")
+    parser.add_argument("--reason", help="Reason for approval or rejection")
     args = parser.parse_args()
     if args.command == "submit":
         if not args.file or not args.key:
             parser.error("submit requires --file and --key")
         with open(args.file, encoding="utf-8") as stream:
             result = submit_request(args.db, json.load(stream), args.key)
+    elif args.command == "review":
+        if not all([args.request_id, args.decision, args.reviewer, args.reason]):
+            parser.error("review requires --request-id, --decision, --reviewer, and --reason")
+        result = review_request(args.db, args.request_id, args.decision, args.reviewer, args.reason)
     elif args.command == "duplicates":
         result = duplicate_report(args.db)
     else:
