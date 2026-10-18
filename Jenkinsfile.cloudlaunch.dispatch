@@ -37,6 +37,14 @@ pipeline {
                     if (!(previous ==~ /^[0-9a-f]{40}$/)) {
                         error('Invalid dispatch cursor. Manual intervention required.')
                     }
+                    // One-time repair: the previous dispatcher incorrectly discarded
+                    // REQ-1003 due to an over-escaped file regex and moved the cursor.
+                    // Replay only commits after the known-good baseline; prior requests
+                    // REQ-1001 and REQ-1002 are still excluded.
+                    if (previous == 'ce9de909b63c84b4105085cab82435a94c35ac05') {
+                        echo 'Recovering previously missed REQ-1003 dispatch.'
+                        previous = '931c1da6e3c43ac470807013383da06587822f7d'
+                    }
                     if (previous == current) {
                         echo 'No new merged commits to process.'
                         return
