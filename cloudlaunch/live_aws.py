@@ -7,6 +7,7 @@ import json
 from .requests import validate
 from .aws_inventory import preflight_decision
 from .gate import evaluate_gate
+from .requests import connect
 
 def main():
     parser = argparse.ArgumentParser(description="Read-only AWS EC2 inventory preflight")
@@ -19,6 +20,15 @@ def main():
         parser.error("--db and --request-id must be supplied together")
     with open(args.file, encoding="utf-8") as stream:
         data = validate(json.load(stream))
+    if args.db:
+        con = connect(args.db)
+        try:
+            row = con.execute("SELECT request_json FROM requests WHERE request_id=?",
+                              (args.request_id,)).fetchone()
+            if row is None or validate(json.loads(row["request_json"])) != data:
+                parser.error("Provided request file does not match the database request ID")
+        finally:
+            con.close()
     try:
         import boto3
         session = boto3.Session(profile_name=args.profile) if args.profile else boto3.Session()
