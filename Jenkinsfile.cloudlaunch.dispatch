@@ -1,0 +1,78 @@
+// CloudLaunch pull-based dispatcher for a local-only Jenkins server.
+// Run as a separate Pipeline-from-SCM job pinned to main (not as a PR build).
+// Jenkins checks GitHub every ~2 minutes and forwards newly added JSON requests.
+// Approval, AWS duplicate checks, and Terraform apply remain in cloudlaunch-cd.
+pipeline {
+    agent any
+    options {
+        skipDefaultCheckout(true)
+        disableConcurrentBuilds()
+        timestamps()
+        timeout(time: 15, unit: 'MINUTES')
+    }
+    triggers {
+        pollSCM('H/2 * * * *')
+    }
+    stages {
+        stage('Find newly merged requests') {
+            steps {
+                checkout scm
+                script {
+                    // Job must use a trusted SCM config pinned to main.
+                    def branch = sh(script: 'git branch --show-current || true', returnStdout: true).trim()
+                    // A detached HEAD checkout is standard for Jenkins Git; verify remote main matches.
+                    def current = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                    def main = sh(script: 'git rev-parse refs/remotes/origin/main', returnStdout: true).trim()
+                    if (current != main) {
+                        error('Dispatcher must check out origin/main, never a PR branch')
+                    }
+                    def marker = '.cloudlaunch-dispatch-last-commit'
+                    if (!fileExists(marker)) {
+                        // Crucial: Do not redeploy REQ-1001 or REQ-1002 on first startup.
+                        writeFile(file: marker, text: current + '\n')
+                        echo "Dispatcher initialized at ${current}. Existing requests are NOT replayed."
+                        return
+                    }
+                    def previous = readFile(marker).trim()
+                    if (!(previous ==~ /^[0-9a-f]{40}$/)) {
+                        error('Invalid dispatch cursor. Manual intervention required.')
+                    }
+                    if (previous == current) {
+                        echo 'No new merged commits to process.'
+                        return
+                    }
+                    def priorIsAncestor = sh(
+                        script: "git merge-base --is-ancestor '${previous}' HEAD",
+                        returnStatus: true
+                    )
+                    if (priorIsAncestor != 0) {
+                        error('Main history changed or dispatch cursor unavailable; refusing to skip requests.')
+                    }
+                    // Only *newly added* request JSONs are eligible; no redeploy on edits.
+                    def changed = sh(
+                        script: "git diff --name-only --diff-filter=A '${previous}' HEAD -- requests/",
+                        returnStdout: true
+                    ).trim()
+                    def files = changed ? changed.readLines().findAll {
+                        it ==~ /^requests\\/[A-Za-z0-9_.-]+\\.json$/
+                    } : []
+                    echo "New request files to dispatch: ${files}"
+                    for (def requestPath : files) {
+                        if (!fileExists(requestPath)) {
+                            error("Added request was removed before dispatch: ${requestPath}")
+                        }
+                        // Only one trusted downstream job handles AWS access and approvals.
+                        build job: 'cloudlaunch-cd',
+                              parameters: [string(name: 'REQUEST_FILE', value: requestPath)],
+                              wait: false,
+                              propagate: false
+                        echo "Queued cloudlaunch-cd for ${requestPath}"
+                    }
+                    // Advance only after all matching requests are successfully queued.
+                    writeFile(file: marker, text: current + '\n')
+                    echo "Dispatcher cursor advanced to ${current}."
+                }
+            }
+        }
+    }
+}
