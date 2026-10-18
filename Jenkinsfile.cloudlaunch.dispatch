@@ -61,9 +61,13 @@ pipeline {
                         script: "git diff --name-only --diff-filter=A '${previous}' HEAD -- requests/",
                         returnStdout: true
                     ).trim()
+                    echo "Newly added paths under requests/: ${changed}"
                     def files = changed ? changed.readLines().findAll {
-                        it ==~ /^requests\\/[A-Za-z0-9_.-]+\\.json$/
+                        it ==~ 'requests/[A-Za-z0-9_.-]+[.]json'
                     } : []
+                    if (changed && changed.readLines().any { it.endsWith('.json') } && files.isEmpty()) {
+                        error('Found added JSON files but dispatcher matched none; refusing to advance cursor.')
+                    }
                     echo "New request files to dispatch: ${files}"
                     for (def requestPath : files) {
                         if (!fileExists(requestPath)) {
