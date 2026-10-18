@@ -1,0 +1,42 @@
+// CloudLaunch validation-only pipeline. NO AWS credentials and NO Terraform apply.
+// Configure this as a SEPARATE Pipeline-from-SCM job using this script path.
+// Do not change the existing terraform-standalone Jenkins job.
+pipeline {
+    agent any
+    options {
+        skipDefaultCheckout(true)
+        disableConcurrentBuilds()
+        timeout(time: 20, unit: 'MINUTES')
+        timestamps()
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                // Only use an isolated validation workspace; NEVER clean the Terraform state workspace.
+                checkout scm
+            }
+        }
+        stage('CloudLaunch Python Tests') {
+            steps {
+                sh 'python3 -m unittest discover -s tests -v'
+            }
+        }
+        stage('Validate Terraform Syntax (No Backend)') {
+            steps {
+                sh 'terraform fmt -check -recursive'
+                sh 'terraform init -backend=false -input=false -lockfile=readonly -no-color'
+                sh 'terraform validate -no-color'
+            }
+        }
+        stage('Enforce Dry Run') {
+            steps {
+                echo 'No AWS credentials injected, no Terraform plan/apply, and no instance created.'
+                echo 'This job validates code only. Request-aware CD enforcement is not enabled.'
+            }
+        }
+    }
+    post {
+        success { echo 'CloudLaunch dry-run validation passed.' }
+        failure { echo 'CloudLaunch validation failed. No deployment attempted.' }
+    }
+}

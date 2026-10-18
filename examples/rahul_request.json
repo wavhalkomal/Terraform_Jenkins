@@ -1,0 +1,9 @@
+{
+  "employee_id": "rahul",
+  "project_id": "PAY-2026",
+  "task_id": "TASK-450",
+  "workload": "payment-api",
+  "environment": "dev",
+  "region": "us-east-1",
+  "instance_type": "t3.micro"
+}
