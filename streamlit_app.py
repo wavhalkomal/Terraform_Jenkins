@@ -6,10 +6,15 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from cloudlaunch_portal.github_status import fetch_workflows
+from cloudlaunch_portal.repository_requests import fetch_request_files
 
 @st.cache_data(ttl=90, show_spinner=False)
 def github_status():
  return fetch_workflows()
+
+@st.cache_data(ttl=120, show_spinner=False)
+def repository_requests():
+ return fetch_request_files()
 
 st.set_page_config(page_title="CloudLaunch Enterprise",page_icon="☁️",layout="wide",initial_sidebar_state="expanded")
 st.markdown("""<style>
@@ -51,6 +56,20 @@ h1,h2,h3{font-family:'Times New Roman',Times,serif,sans-serif!important;letter-s
 .workflow span{background:#eff5ff;border:1px solid #dce9ff;padding:11px;border-radius:10px;color:#285db3;font-weight:700;font-size:.8rem}
 .workflow b{color:#a4b2c8}
 .note{background:#f1f6ff;border:1px solid #ddeaff;color:#506c9a;padding:15px;border-radius:13px;font-size:.8rem}
+
+/* CloudLaunch brand motion: purely decorative; honors reduced motion. */
+.hero{position:relative;overflow:hidden;isolation:isolate;min-height:210px}
+.hero::before{content:"";position:absolute;z-index:-1;inset:0 0 0 52%;
+background-image:radial-gradient(circle,#3b82f6 1.8px,transparent 2.7px),
+repeating-linear-gradient(30deg,transparent 0 49px,rgba(50,110,205,.1) 50px,transparent 51px),
+repeating-linear-gradient(150deg,transparent 0 59px,rgba(50,110,205,.07) 60px,transparent 61px);
+background-size:53px 53px,100px 100px,110px 110px;opacity:.47;animation:network-drift 24s linear infinite}
+.hero::after{content:"";position:absolute;z-index:-1;right:4%;top:-80px;width:360px;height:360px;
+border:1px solid #bfdbfe;border-radius:50%;box-shadow:0 0 0 40px #dbeafe22,0 0 0 88px #eff6ff99;
+background:radial-gradient(circle at 45% 46%,#93c5fd44,transparent 61%)}
+@keyframes network-drift{to{background-position:106px 53px,90px 0,-110px 30px}}
+@media(prefers-reduced-motion:reduce){.hero::before{animation:none}}
+[data-testid="stSidebar"] .stRadio label{font-size:1rem}
 </style>""",unsafe_allow_html=True)
 
 if "requests" not in st.session_state:
@@ -82,9 +101,9 @@ def chart(kind):
 with st.sidebar:
  st.markdown('<div class="brand"><span class="brand-logo">C</span>CloudLaunch</div><div class="small">Enterprise Cloud Platform</div>',unsafe_allow_html=True)
  st.write("")
- pages=["Overview","Service Catalog","Requests","Approvals","Infrastructure","Deployments","Cost & Governance","Architecture"]
- labels=["▦  Overview","⊞  Service Catalog","▤  Requests","✓  Approvals","◈  Infrastructure","⌁  Deployments","◉  Cost & Governance","◇  Architecture"]
- choice=st.radio("Navigation",list(range(8)),format_func=lambda i:labels[i],label_visibility="collapsed")
+ pages=["Overview","Service Catalog","Requests","Approvals","Infrastructure","Deployments","Cost & Governance","Integrations & Access","Architecture"]
+ labels=["▦  Overview","⊞  Service Catalog","▤  Requests","✓  Approvals","◈  Infrastructure","⌁  Deployments","◉  Cost & Governance","⚙  Integrations & Access","◇  Architecture"]
+ choice=st.radio("Navigation",list(range(len(pages))),format_func=lambda i:labels[i],label_visibility="collapsed")
  page=pages[choice]
  st.divider()
  st.markdown('<div class="note"><b>CLOUDLAUNCH PLATFORM STATUS</b><p style="margin-bottom:0">AWS infrastructure provisioning, Jenkins CI/CD automation, and duplicate prevention were implemented and tested with real AWS. Live infrastructure monitoring and deployment controls are not yet connected to this web portal. Sample cost charts and inventory are illustrative.</p></div>',unsafe_allow_html=True)
@@ -93,29 +112,46 @@ with st.sidebar:
 st.markdown(f'<div class="topbar"><span>Workspace &nbsp; / &nbsp; <b>{html.escape(page)}</b></span><span class="mode">GitHub public API · AWS/Jenkins connection pending</span></div>',unsafe_allow_html=True)
 
 if page=="Overview":
- st.markdown('<div class="hero"><div class="eyebrow">THE CLOUD OPERATIONS WORKSPACE</div><h1>Run infrastructure with clarity.</h1><p>One command center for cloud requests, approvals, delivery pipelines, governance and spend—designed for platform engineering teams.</p></div>',unsafe_allow_html=True)
- a,b,c,d=st.columns(4)
- a.metric("Showcase requests",len(st.session_state.requests),"Demo session")
- b.metric("Provisioned examples",sum("Provisioned" in r["Status"] for r in st.session_state.requests),"Illustrative")
- c.metric("Duplicate protections",sum("Duplicate" in r["Status"] for r in st.session_state.requests),"Illustrative")
+ st.markdown('<div class="hero"><div class="eyebrow">ENTERPRISE CLOUD PLATFORM</div><h1 style="font-size:3.2rem!important;margin:9px 0 4px">CloudLaunch</h1><p style="font-size:1.25rem;color:#223b64">Secure cloud infrastructure automation, approvals &amp; governance</p><p>Bring infrastructure requests, deployment policies, CI/CD visibility and operational control together in one platform.</p></div>',unsafe_allow_html=True)
  gh=github_status()
+ real=repository_requests()
+ a,b,c,d=st.columns(4)
+ a.metric("Repository requests",len(real["rows"]) if real["connected"] else "Unavailable")
+ b.metric("Verified EC2 creation tests",1,"Historical")
+ c.metric("Verified duplicate blocks",2,"Historical")
  d.metric("GitHub Actions API","Connected" if gh["connected"] else "Unavailable")
- st.caption("GitHub Actions status is retrieved live. Example infrastructure and financial values are not live.")
- section("Operations intelligence","Example analytics — not live data")
- a,b=st.columns([1.2,1])
- with a:
+ st.caption("The request table is sourced from actual GitHub JSON files. Provisioning and duplicate outcomes refer to previously verified Jenkins tests; the EC2 test instances were subsequently deleted.")
+ section("Infrastructure requests","Real source files · historical deployment outcomes")
+ if real["connected"]:
+  st.dataframe(pd.DataFrame(real["rows"]),hide_index=True,use_container_width=True)
+ else:
+  st.warning(real["error"] or "GitHub request files unavailable")
+ section("Platform integrations","Verified credentials and runtime access are separate checks")
+ i1,i2,i3=st.columns(3)
+ with i1:
   with st.container(border=True):
-   st.markdown("**Cloud spend by service**")
-   st.caption("Illustrative historical spend · USD")
-   st.plotly_chart(chart("cost"),use_container_width=True,config={"displayModeBar":False})
- with b:
+   st.markdown("**GitHub Actions**")
+   st.write("API reachable" if gh["connected"] else "API unavailable")
+   st.caption("Live read-only repository workflow telemetry")
+ with i2:
   with st.container(border=True):
-   st.markdown("**Deployment throughput**")
-   st.caption("Illustrative weekly activity")
-   st.plotly_chart(chart("deploy"),use_container_width=True,config={"displayModeBar":False})
- section("Recent infrastructure requests","Sample and session records")
- st.dataframe(frame(st.session_state.requests),hide_index=True,use_container_width=True)
- st.caption("Previous Jenkins/Terraform/AWS end-to-end tests were verified separately. This site shows simulated data only.")
+   st.markdown("**AWS**")
+   st.write("Portal connection not configured")
+   st.caption("Real EC2 deployment tested earlier via Jenkins")
+ with i3:
+  with st.container(border=True):
+   st.markdown("**Jenkins**")
+   st.write("Portal connection not configured")
+   st.caption("Local Jenkins on Mac; tested separately")
+ section("Latest GitHub Actions","Actual workflow runs · refreshes approximately every 90 seconds")
+ if gh["connected"] and gh["runs"]:
+  st.dataframe(pd.DataFrame(gh["runs"][:6]),hide_index=True,use_container_width=True,
+     column_config={"Run URL":st.column_config.LinkColumn("Open run")})
+ elif gh["connected"]:
+  st.info("No GitHub workflow runs returned.")
+ else:
+  st.warning(gh["error"] or "GitHub API unavailable")
+ st.caption("Organization SSO, cross-account AWS access and managed Jenkins connectors must be verified before anyone can provision infrastructure through this hosted website.")
 
 elif page=="Service Catalog":
  heading("Infrastructure service catalog","Request standardized cloud services from one managed workspace.","SELF-SERVICE INFRASTRUCTURE")
@@ -148,18 +184,24 @@ elif page=="Service Catalog":
 
 
 elif page=="Requests":
- heading("Request management","Search, filter and export the complete demo request lifecycle.","WORKFLOW CENTER")
- a,b,c=st.columns(3)
- a.metric("Total requests",len(st.session_state.requests))
- b.metric("Pending review",sum("approval" in r["Status"] or "review" in r["Status"] for r in st.session_state.requests))
- c.metric("Blocked duplicates",sum("Duplicate" in r["Status"] for r in st.session_state.requests))
- section("Request register","Current visitor session")
- a,b=st.columns([2,1])
- query=a.text_input("Search requests",placeholder="Project, owner, request ID")
- status=b.selectbox("Status",["All statuses"]+sorted(set(r["Status"] for r in st.session_state.requests)))
- shown=[r for r in st.session_state.requests if (not query or query.casefold() in " ".join(map(str,r.values())).casefold()) and (status=="All statuses" or r["Status"]==status)]
- st.dataframe(frame(shown),hide_index=True,use_container_width=True)
- st.download_button("↓ Export filtered CSV",frame(shown).to_csv(index=False),"cloudlaunch-requests-demo.csv","text/csv")
+ heading("Infrastructure requests","Read actual CloudLaunch request specifications tracked in GitHub.","REQUEST REGISTER")
+ real=repository_requests()
+ section("Repository request files","GitHub main · verified historical tests")
+ if real["connected"]:
+  a,b=st.columns([2,1])
+  query=a.text_input("Search real requests",placeholder="Request ID, workload, owner")
+  shown=[r for r in real["rows"] if query.casefold() in " ".join(str(x) for x in r.values()).casefold()]
+  st.dataframe(pd.DataFrame(shown,columns=list(real["rows"][0])),hide_index=True,use_container_width=True)
+  st.download_button("Export repository requests",pd.DataFrame(shown).to_csv(index=False),"cloudlaunch-repository-requests.csv","text/csv")
+ else:
+  st.warning(real["error"] or "Repository request files unavailable")
+ section("New submissions in this browser","Session-only draft requests; not approved or deployed")
+ submissions=[r for r in st.session_state.requests if str(r["ID"]).startswith("CL-") and len(str(r["ID"]))>7]
+ if submissions:
+  st.dataframe(frame(submissions),hide_index=True,use_container_width=True)
+ else:
+  st.info("No new requests submitted during this browser session.")
+ st.caption("Real production request submission needs authenticated persistent APIs and organization approval controls. This public website cannot provision AWS infrastructure.")
 
 elif page=="Approvals":
  heading("Approval operations","Review access and compute requests through explicit governance checkpoints.","POLICY AND REVIEW")
@@ -236,6 +278,43 @@ elif page=="Deployments":
  else:
   st.warning(gh["error"] or "GitHub API unavailable")
  st.caption("GitHub Actions results are live; Jenkins on your Mac and AWS are not connected to this portal.")
+
+elif page=="Integrations & Access":
+ heading("Integrations & Access","Organization administrators configure company-owned services; employees use a single authorized login.","ENTERPRISE ACCESS CONTROL")
+ st.info("This is the integration onboarding blueprint. Public visitors cannot enter or validate credentials here because an authenticated, isolated backend is not yet deployed.")
+ gh=github_status()
+ section("Provider connection status","Actual web portal connections — not historical CI/CD tests")
+ providers=pd.DataFrame([
+  ["CloudLaunch SSO","Not configured","Identity provider OIDC authentication; tenant membership and MFA"],
+  ["GitHub Actions (read-only public API)","Connected" if gh["connected"] else "Unavailable","Live public workflow status; no sign-in needed"],
+  ["GitHub organization installation","Not configured","Organization admin authorizes a restricted GitHub App installation"],
+  ["AWS account","Not configured","Company admin approves scoped cross-account IAM role; backend verifies STS identity"],
+  ["Jenkins controller","Not configured","Admin configures a private scoped connector; agent verifies health and job permissions"],
+  ["Terraform execution","Not connected to portal","Terraform is run by a controlled Jenkins worker using approved scoped cloud credentials"],
+ ],columns=["Provider","Current portal status","How identity / access is verified"])
+ st.dataframe(providers,hide_index=True,use_container_width=True)
+ section("Credential validation design","Company admin only")
+ st.markdown("""**1. Employee signs in with company SSO.** CloudLaunch verifies OIDC ID-token signatures, issuer, audience, expiry, MFA policy and organization membership on the backend.
+ 
+ **2. GitHub:** the organization's administrator authorizes a GitHub App for selected repositories. Backend verifies the installation and its permissions using short-lived installation tokens.
+ 
+ **3. AWS:** the organization's administrator approves a least-privilege cross-account IAM role with an external ID. Backend calls AWS STS `GetCallerIdentity` then restricted read-only inventory APIs to confirm permitted account and scopes. No employee access keys are requested.
+ 
+ **4. Jenkins:** an organization admin installs a restricted outbound connector or enables a secure private integration. Backend verifies TLS, signed responses, allowed jobs and job-specific permissions; never expose your Mac's `localhost:8080` to the public.
+ 
+ **5. Terraform:** no separate end-user Terraform password. Deployment workers receive narrowly scoped short-lived cloud credentials and use isolated remote state and plan approval gates.""")
+ section("Go-live security gates")
+ st.dataframe(pd.DataFrame([
+  ["Organization sign-in and tenant isolation","Required · not implemented"],
+  ["Server-side RBAC and approval separation","Required · not implemented"],
+  ["Managed secrets and encrypted integration configuration","Required · not implemented"],
+  ["Audited, idempotent request queue","Required · not implemented"],
+  ["AWS identity + permission scope verification","Required · not implemented"],
+  ["Jenkins agent identity + restricted job verification","Required · not implemented"],
+  ["Terraform plan guard and duplicate check","Existing backend tests passed; portal integration pending"],
+ ],columns=["Security control","Implementation status"]),hide_index=True,use_container_width=True)
+ st.warning("No AWS secret keys, Jenkins admin tokens or individual user passwords should be pasted into this public app.")
+ st.link_button("View enterprise integration design","https://github.com/wavhalkomal/Terraform_Jenkins/blob/main/docs/ENTERPRISE_AUTH_AND_INTEGRATIONS.md")
 
 elif page=="Cost & Governance":
  heading("Cloud financial operations","Control costs and avoid duplicate, idle or unowned infrastructure.","FINOPS + GOVERNANCE")
