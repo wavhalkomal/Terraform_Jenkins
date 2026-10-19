@@ -184,18 +184,24 @@ elif page=="Service Catalog":
 
 
 elif page=="Requests":
- heading("Request management","Search, filter and export the complete demo request lifecycle.","WORKFLOW CENTER")
- a,b,c=st.columns(3)
- a.metric("Total requests",len(st.session_state.requests))
- b.metric("Pending review",sum("approval" in r["Status"] or "review" in r["Status"] for r in st.session_state.requests))
- c.metric("Blocked duplicates",sum("Duplicate" in r["Status"] for r in st.session_state.requests))
- section("Request register","Current visitor session")
- a,b=st.columns([2,1])
- query=a.text_input("Search requests",placeholder="Project, owner, request ID")
- status=b.selectbox("Status",["All statuses"]+sorted(set(r["Status"] for r in st.session_state.requests)))
- shown=[r for r in st.session_state.requests if (not query or query.casefold() in " ".join(map(str,r.values())).casefold()) and (status=="All statuses" or r["Status"]==status)]
- st.dataframe(frame(shown),hide_index=True,use_container_width=True)
- st.download_button("↓ Export filtered CSV",frame(shown).to_csv(index=False),"cloudlaunch-requests-demo.csv","text/csv")
+ heading("Infrastructure requests","Read actual CloudLaunch request specifications tracked in GitHub.","REQUEST REGISTER")
+ real=repository_requests()
+ section("Repository request files","GitHub main · verified historical tests")
+ if real["connected"]:
+  a,b=st.columns([2,1])
+  query=a.text_input("Search real requests",placeholder="Request ID, workload, owner")
+  shown=[r for r in real["rows"] if query.casefold() in " ".join(str(x) for x in r.values()).casefold()]
+  st.dataframe(pd.DataFrame(shown,columns=list(real["rows"][0])),hide_index=True,use_container_width=True)
+  st.download_button("Export repository requests",pd.DataFrame(shown).to_csv(index=False),"cloudlaunch-repository-requests.csv","text/csv")
+ else:
+  st.warning(real["error"] or "Repository request files unavailable")
+ section("New submissions in this browser","Session-only draft requests; not approved or deployed")
+ submissions=[r for r in st.session_state.requests if str(r["ID"]).startswith("CL-") and len(str(r["ID"]))>7]
+ if submissions:
+  st.dataframe(frame(submissions),hide_index=True,use_container_width=True)
+ else:
+  st.info("No new requests submitted during this browser session.")
+ st.caption("Real production request submission needs authenticated persistent APIs and organization approval controls. This public website cannot provision AWS infrastructure.")
 
 elif page=="Approvals":
  heading("Approval operations","Review access and compute requests through explicit governance checkpoints.","POLICY AND REVIEW")
