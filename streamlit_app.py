@@ -8,34 +8,34 @@ import streamlit as st
 
 st.set_page_config(page_title="CloudLaunch Enterprise",page_icon="☁️",layout="wide",initial_sidebar_state="expanded")
 st.markdown("""<style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
-.stApp{background:#f6f8fc;color:#182941;font-family:'DM Sans',sans-serif}
+html,body,div,span,p,label,button,input,textarea,select,table,td,th,.stApp{font-family:'Times New Roman',Times,serif!important;letter-spacing:normal!important}
+.stApp{background:#f6f8fc;color:#182941;font-family:'Times New Roman',Times,serif}
 .block-container{max-width:1600px;padding:1.5rem 2rem 3rem}
 [data-testid="stSidebar"]{background:#fff!important;border-right:1px solid #e5ebf3}
 [data-testid="stSidebar"] *{color:#22334b}
 [data-testid="stHeader"]{background:#f6f8fc}
-h1,h2,h3{font-family:'Plus Jakarta Sans',sans-serif!important;letter-spacing:-.04em!important;color:#162743}
+h1,h2,h3{font-family:'Times New Roman',Times,serif,sans-serif!important;letter-spacing:normal!important;color:#162743}
 [data-testid="stMetric"]{border:1px solid #e4eaf2;border-radius:16px;background:#fff;padding:17px 21px;min-height:125px;box-shadow:0 6px 22px #13284a05}
 [data-testid="stMetricLabel"]{color:#64748b}
-[data-testid="stMetricValue"]{font-family:'Plus Jakarta Sans';font-weight:800;color:#162743}
+[data-testid="stMetricValue"]{font-family:'Times New Roman',Times,serif;font-weight:800;color:#162743}
 [data-testid="stDataFrame"]{border:1px solid #e4eaf2;border-radius:12px;overflow:hidden}
 [data-testid="stForm"]{background:#fff;border:1px solid #e4eaf2;border-radius:16px;padding:24px}
 .stButton>button[kind=primary],div[data-testid="stFormSubmitButton"] button[kind=primary]{background:#2563eb!important;color:#fff!important;border:1px solid #2563eb!important;border-radius:10px!important;font-weight:700}
 .stButton button{border-radius:10px;font-weight:650}
 [data-testid="stVerticalBlockBorderWrapper"]>div{border-color:#e4eaf2!important;border-radius:16px!important;background:white}
-.brand{display:flex;align-items:center;gap:10px;font-family:'Plus Jakarta Sans';font-weight:800;font-size:1.25rem;color:#162743;margin:12px 0 3px}
+.brand{display:flex;align-items:center;gap:10px;font-family:'Times New Roman',Times,serif;font-weight:800;font-size:1.25rem;color:#162743;margin:12px 0 3px}
 .brand-logo{display:inline-grid;place-items:center;width:39px;height:39px;border-radius:12px;color:#fff;background:#2563eb}
 .small{font-size:.75rem;color:#8895a9;letter-spacing:.08em;text-transform:uppercase;font-weight:800}
 .topbar{border:1px solid #e4eaf2;background:white;border-radius:14px;padding:15px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:23px;font-size:.83rem;color:#697890}
 .mode{color:#225cba;background:#eef5ff;padding:7px 11px;border-radius:20px;font-weight:800}
 .eyebrow{color:#366bc2;font-size:.75rem;letter-spacing:.12em;font-weight:800;text-transform:uppercase}
-.heading{font-family:'Plus Jakarta Sans';font-size:2rem;font-weight:800;letter-spacing:-.06em;color:#172941;margin:7px 0}
+.heading{font-family:'Times New Roman',Times,serif;font-size:2rem;font-weight:800;letter-spacing:normal;color:#172941;margin:7px 0}
 .subheading{color:#71809a;font-size:.95rem;margin-bottom:24px}
 .hero{background:linear-gradient(115deg,#edf5ff,#fff 68%,#e5f0ff);border:1px solid #dae7fb;padding:30px;border-radius:19px;margin-bottom:20px}
 .hero h1{font-size:2rem!important;font-weight:800;margin:7px 0 10px}
 .hero p{color:#667891;max-width:750px}
 .section{display:flex;justify-content:space-between;align-items:center;margin:25px 0 13px}
-.section strong{font-family:'Plus Jakarta Sans';font-size:1.08rem;color:#192b46}
+.section strong{font-family:'Times New Roman',Times,serif;font-size:1.08rem;color:#192b46}
 .section span{color:#8997a9;font-size:.78rem}
 .tile{background:white;border:1px solid #e4eaf2;border-radius:16px;padding:22px;margin-bottom:15px;min-height:177px}
 .tile h3{font-size:1rem!important;margin:10px 0}
@@ -82,10 +82,10 @@ with st.sidebar:
  choice=st.radio("Navigation",list(range(8)),format_func=lambda i:labels[i],label_visibility="collapsed")
  page=pages[choice]
  st.divider()
- st.markdown('<div class="note"><b>● PUBLIC PRODUCT SHOWCASE</b><p style="margin-bottom:0">All assets, costs and trends are illustrative. No AWS credentials or deployment access.</p></div>',unsafe_allow_html=True)
+ st.markdown('<div class="note"><b>CLOUDLAUNCH PLATFORM STATUS</b><p style="margin-bottom:0">AWS infrastructure provisioning, Jenkins CI/CD automation, and duplicate prevention were implemented and tested with real AWS. Live infrastructure monitoring and deployment controls are not yet connected to this web portal. Sample cost charts and inventory are illustrative.</p></div>',unsafe_allow_html=True)
  st.write("")
  st.link_button("↗ GitHub source","https://github.com/wavhalkomal/Terraform_Jenkins",use_container_width=True)
-st.markdown(f'<div class="topbar"><span>Workspace &nbsp; / &nbsp; <b>{html.escape(page)}</b></span><span class="mode">● Safe demo mode</span></div>',unsafe_allow_html=True)
+st.markdown(f'<div class="topbar"><span>Workspace &nbsp; / &nbsp; <b>{html.escape(page)}</b></span><span class="mode">Hosted integrations not connected</span></div>',unsafe_allow_html=True)
 
 if page=="Overview":
  st.markdown('<div class="hero"><div class="eyebrow">THE CLOUD OPERATIONS WORKSPACE</div><h1>Run infrastructure with clarity.</h1><p>One command center for cloud requests, approvals, delivery pipelines, governance and spend—designed for platform engineering teams.</p></div>',unsafe_allow_html=True)
@@ -93,7 +93,7 @@ if page=="Overview":
  a.metric("Showcase requests",len(st.session_state.requests),"Demo session")
  b.metric("Provisioned examples",sum("Provisioned" in r["Status"] for r in st.session_state.requests),"Illustrative")
  c.metric("Duplicate protections",sum("Duplicate" in r["Status"] for r in st.session_state.requests),"Illustrative")
- d.metric("Live cloud connections","0","Not configured",delta_color="off")
+ d.metric("Hosted integrations","Not connected")
  section("Operations intelligence","Example analytics — not live data")
  a,b=st.columns([1.2,1])
  with a:
@@ -112,13 +112,7 @@ if page=="Overview":
 
 elif page=="Service Catalog":
  heading("Infrastructure service catalog","Request standardized cloud services from one managed workspace.","SELF-SERVICE INFRASTRUCTURE")
- section("Explore available services","Compute demo interactive · other services roadmap")
- services=[("☁","Cloud compute","Provision EC2 virtual machines with governed request flows.","DEMO AVAILABLE"),("▤","Object storage","Encrypted S3 storage with lifecycle and retention controls.","COMING SOON"),("◉","Managed databases","Standardized database delivery and compliance controls.","COMING SOON"),("⬡","Container platforms","Scale containerized services with automated provisioning.","COMING SOON"),("◇","Networking","Managed VPC, routing and connectivity requests.","COMING SOON"),("♧","Identity & access","Auditable, least-privilege identity requests.","COMING SOON")]
- cols=st.columns(3)
- for i,(ic,name,desc,state) in enumerate(services):
-  with cols[i%3]:
-   st.markdown(f'<div class="tile"><div class="iconbox">{ic}</div><h3>{name}</h3><p>{desc}</p><span class="chip">{state}</span></div>',unsafe_allow_html=True)
- section("Request cloud compute","No AWS resources will be created")
+ section("Request cloud compute","Website request form · no direct AWS creation")
  with st.form("request_form",clear_on_submit=True):
   a,b=st.columns(2)
   user=a.text_input("Employee name")
@@ -137,6 +131,14 @@ elif page=="Service Catalog":
    rid="CL-"+uuid.uuid4().hex[:6].upper()
    st.session_state.requests.insert(0,{"ID":rid,"Project":project.strip(),"Owner":user.strip(),"Service":"EC2","Environment":env,"Size":size,"Status":status,"Created":datetime.now(timezone.utc).strftime("%b %d")})
    st.success(f"{rid} submitted to this browser session; status: {status}. No server was created in {region}.")
+
+ section("Explore available services","Future services · not yet implemented")
+ services=[("☁","Cloud compute","Provision EC2 virtual machines with governed request flows.","REQUEST FORM"),("▤","Object storage","Encrypted S3 storage with lifecycle and retention controls.","COMING SOON"),("◉","Managed databases","Standardized database delivery and compliance controls.","COMING SOON"),("⬡","Container platforms","Scale containerized services with automated provisioning.","COMING SOON"),("◇","Networking","Managed VPC, routing and connectivity requests.","COMING SOON"),("♧","Identity & access","Auditable, least-privilege identity requests.","COMING SOON")]
+ cols=st.columns(3)
+ for i,(ic,name,desc,state) in enumerate(services):
+  with cols[i%3]:
+   st.markdown(f'<div class="tile"><div class="iconbox">{ic}</div><h3>{name}</h3><p>{desc}</p><span class="chip">{state}</span></div>',unsafe_allow_html=True)
+
 
 elif page=="Requests":
  heading("Request management","Search, filter and export the complete demo request lifecycle.","WORKFLOW CENTER")
@@ -179,7 +181,7 @@ elif page=="Infrastructure":
  heading("Infrastructure explorer","Regional asset tracking and application ownership, ready for secure AWS integration.","CLOUD INVENTORY")
  st.info("Sample resources below are fictional. Your real test EC2 instances were deleted; this app has no AWS inventory connection.")
  a,b,c,d=st.columns(4)
- a.metric("Sample assets",6);b.metric("Sample regions",3);c.metric("Sample teams",4);d.metric("Live AWS sync","Offline")
+ a.metric("Sample assets",6);b.metric("Sample regions",3);c.metric("Sample teams",4);d.metric("AWS inventory feed","Not connected")
  section("Asset inventory","Example records only")
  assets=pd.DataFrame([
  ["payments-api-dev","EC2","us-east-1","Development","Running · sample","Payments"],
@@ -204,7 +206,8 @@ elif page=="Deployments":
  a.metric("Historical unit tests",43,"Passed")
  b.metric("Actual EC2 test","Verified","Historical")
  c.metric("Duplicate guard","Verified","Historical")
- d.metric("Live Jenkins status","Offline")
+ d.metric("Jenkins status feed","Not connected")
+ st.caption("Jenkins was tested locally, but this hosted website has no secure connection to Jenkins on your Mac.")
  section("Deployment architecture","Real tests previously completed; integration not live")
  st.markdown('<div class="tile"><h3>End-to-end controlled deployment</h3><div class="workflow"><span>GitHub PR</span><b>→</b><span>CI checks</span><b>→</b><span>Jenkins dispatch</span><b>→</b><span>AWS duplicate check</span><b>→</b><span>Terraform plan</span><b>→</b><span>Approval</span><b>→</b><span>Apply</span></div></div>',unsafe_allow_html=True)
  section("Historical verification","Prior Jenkins logs")
@@ -223,7 +226,7 @@ elif page=="Cost & Governance":
  a.metric("Illustrative monthly spend","$735")
  b.metric("Illustrative forecast","$810")
  c.metric("Demo duplicate checks","1")
- d.metric("Cost Explorer connection","Offline")
+ d.metric("Cost Explorer API","Not connected")
  a,b=st.columns([1.4,1])
  with a:
   with st.container(border=True):
@@ -248,4 +251,4 @@ else:
   st.markdown(f'<div class="tile" style="min-height:85px;padding:16px"><span class="chip">{num}</span><h3 style="display:inline;margin-left:12px">{name}</h3><p style="margin:9px 0 0">{desc}</p></div>',unsafe_allow_html=True)
  st.info("The production enterprise platform requires an authenticated, persistent backend. Streamlit Community Cloud is used for a no-cost public showcase.")
 
-st.markdown('<div class="small" style="text-align:center;margin-top:35px">© 2026 CLOUDLAUNCH · INTERACTIVE PUBLIC PREVIEW · NO REAL CLOUD DEPLOYMENTS</div>',unsafe_allow_html=True)
+st.markdown('<div class="small" style="text-align:center;margin-top:35px">Copyright © Komal Wavhal 2026</div>',unsafe_allow_html=True)
