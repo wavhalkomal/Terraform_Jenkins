@@ -82,7 +82,7 @@ with st.sidebar:
  choice=st.radio("Navigation",list(range(8)),format_func=lambda i:labels[i],label_visibility="collapsed")
  page=pages[choice]
  st.divider()
- st.markdown('<div class="note"><b>● CLOUDLAUNCH CONNECTIVITY</b><p style="margin-bottom:0">Real Jenkins/Terraform/AWS deployment tests completed. This hosted portal is not connected to Jenkins or AWS; displayed inventories and costs are illustrative.</p></div>',unsafe_allow_html=True)
+ st.markdown('<div class="note"><b>CLOUDLAUNCH PLATFORM STATUS</b><p style="margin-bottom:0">AWS infrastructure provisioning, Jenkins CI/CD automation, and duplicate prevention were implemented and tested with real AWS. Live infrastructure monitoring and deployment controls are not yet connected to this web portal. Sample cost charts and inventory are illustrative.</p></div>',unsafe_allow_html=True)
  st.write("")
  st.link_button("↗ GitHub source","https://github.com/wavhalkomal/Terraform_Jenkins",use_container_width=True)
 st.markdown(f'<div class="topbar"><span>Workspace &nbsp; / &nbsp; <b>{html.escape(page)}</b></span><span class="mode">Hosted integrations not connected</span></div>',unsafe_allow_html=True)
