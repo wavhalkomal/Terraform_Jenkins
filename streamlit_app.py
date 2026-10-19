@@ -1,150 +1,251 @@
-"""CloudLaunch Enterprise public product preview.
-
-Safe by design: demo-only; no AWS, Jenkins, Terraform, or paid-resource calls.
-The public app uses synthetic data and per-session request state.
-"""
+"""CloudLaunch Enterprise — safe white-theme showcase, no live cloud operations."""
 import uuid
+import html
 from datetime import datetime, timezone
-
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 
-st.set_page_config(page_title="CloudLaunch Enterprise", page_icon="☁️", layout="wide",
-                   initial_sidebar_state="expanded")
+st.set_page_config(page_title="CloudLaunch Enterprise",page_icon="☁️",layout="wide",initial_sidebar_state="expanded")
 st.markdown("""<style>
-.block-container {padding-top:1.8rem;max-width:1480px}
-[data-testid="stSidebar"] {background:#0f172a}
-[data-testid="stSidebar"] * {color:#f8fafc}
-.hero {background:linear-gradient(110deg,#0b1c37,#173a68);
-padding:30px;border-radius:18px;color:white;margin-bottom:22px}
-.hero h1{color:white;font-size:2.15rem;margin-bottom:5px}
-.hero p{color:#b9d2ef;font-size:1.02rem}
-.pill {background:#dbeafe;color:#1e40af;border-radius:8px;padding:4px 10px;
-font-weight:700;font-size:.8rem}
-</style>""", unsafe_allow_html=True)
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+.stApp{background:#f6f8fc;color:#182941;font-family:'DM Sans',sans-serif}
+.block-container{max-width:1600px;padding:1.5rem 2rem 3rem}
+[data-testid="stSidebar"]{background:#fff!important;border-right:1px solid #e5ebf3}
+[data-testid="stSidebar"] *{color:#22334b}
+[data-testid="stHeader"]{background:#f6f8fc}
+h1,h2,h3{font-family:'Plus Jakarta Sans',sans-serif!important;letter-spacing:-.04em!important;color:#162743}
+[data-testid="stMetric"]{border:1px solid #e4eaf2;border-radius:16px;background:#fff;padding:17px 21px;min-height:125px;box-shadow:0 6px 22px #13284a05}
+[data-testid="stMetricLabel"]{color:#64748b}
+[data-testid="stMetricValue"]{font-family:'Plus Jakarta Sans';font-weight:800;color:#162743}
+[data-testid="stDataFrame"]{border:1px solid #e4eaf2;border-radius:12px;overflow:hidden}
+[data-testid="stForm"]{background:#fff;border:1px solid #e4eaf2;border-radius:16px;padding:24px}
+.stButton>button[kind=primary],div[data-testid="stFormSubmitButton"] button[kind=primary]{background:#2563eb!important;color:#fff!important;border:1px solid #2563eb!important;border-radius:10px!important;font-weight:700}
+.stButton button{border-radius:10px;font-weight:650}
+[data-testid="stVerticalBlockBorderWrapper"]>div{border-color:#e4eaf2!important;border-radius:16px!important;background:white}
+.brand{display:flex;align-items:center;gap:10px;font-family:'Plus Jakarta Sans';font-weight:800;font-size:1.25rem;color:#162743;margin:12px 0 3px}
+.brand-logo{display:inline-grid;place-items:center;width:39px;height:39px;border-radius:12px;color:#fff;background:#2563eb}
+.small{font-size:.75rem;color:#8895a9;letter-spacing:.08em;text-transform:uppercase;font-weight:800}
+.topbar{border:1px solid #e4eaf2;background:white;border-radius:14px;padding:15px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:23px;font-size:.83rem;color:#697890}
+.mode{color:#225cba;background:#eef5ff;padding:7px 11px;border-radius:20px;font-weight:800}
+.eyebrow{color:#366bc2;font-size:.75rem;letter-spacing:.12em;font-weight:800;text-transform:uppercase}
+.heading{font-family:'Plus Jakarta Sans';font-size:2rem;font-weight:800;letter-spacing:-.06em;color:#172941;margin:7px 0}
+.subheading{color:#71809a;font-size:.95rem;margin-bottom:24px}
+.hero{background:linear-gradient(115deg,#edf5ff,#fff 68%,#e5f0ff);border:1px solid #dae7fb;padding:30px;border-radius:19px;margin-bottom:20px}
+.hero h1{font-size:2rem!important;font-weight:800;margin:7px 0 10px}
+.hero p{color:#667891;max-width:750px}
+.section{display:flex;justify-content:space-between;align-items:center;margin:25px 0 13px}
+.section strong{font-family:'Plus Jakarta Sans';font-size:1.08rem;color:#192b46}
+.section span{color:#8997a9;font-size:.78rem}
+.tile{background:white;border:1px solid #e4eaf2;border-radius:16px;padding:22px;margin-bottom:15px;min-height:177px}
+.tile h3{font-size:1rem!important;margin:10px 0}
+.tile p{font-size:.83rem;color:#748198;line-height:1.6}
+.iconbox{width:43px;height:43px;border-radius:13px;background:#eaf2ff;display:grid;place-items:center;font-size:22px}
+.chip{background:#eaf3ff;color:#2563eb;font-size:.72rem;font-weight:800;padding:5px 9px;border-radius:8px}
+.workflow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:20px 0}
+.workflow span{background:#eff5ff;border:1px solid #dce9ff;padding:11px;border-radius:10px;color:#285db3;font-weight:700;font-size:.8rem}
+.workflow b{color:#a4b2c8}
+.note{background:#f1f6ff;border:1px solid #ddeaff;color:#506c9a;padding:15px;border-radius:13px;font-size:.8rem}
+</style>""",unsafe_allow_html=True)
 
 if "requests" not in st.session_state:
-    st.session_state.requests = [
-        {"ID":"DEMO-101","Project":"Payments","Service":"EC2","Environment":"Development",
-         "Size":"t3.micro","Status":"Provisioned (sample)","Owner":"Rahul","Created":"Sample"},
-        {"ID":"DEMO-102","Project":"Payments","Service":"EC2","Environment":"Development",
-         "Size":"t3.small","Status":"Duplicate blocked (sample)","Owner":"Priya","Created":"Sample"},
-        {"ID":"DEMO-103","Project":"Analytics","Service":"EC2","Environment":"QA",
-         "Size":"t3.micro","Status":"Approval pending (sample)","Owner":"Sam","Created":"Sample"},
-    ]
+ st.session_state.requests=[
+ {"ID":"CL-2401","Project":"Payments Platform","Owner":"Rahul","Service":"EC2","Environment":"Development","Size":"t3.micro","Status":"Provisioned · sample","Created":"Oct 16"},
+ {"ID":"CL-2402","Project":"Payments Platform","Owner":"Priya","Service":"EC2","Environment":"Development","Size":"t3.small","Status":"Duplicate blocked · sample","Created":"Oct 17"},
+ {"ID":"CL-2403","Project":"Analytics Workspace","Owner":"Sam","Service":"S3","Environment":"QA","Size":"Standard","Status":"Awaiting approval · sample","Created":"Oct 17"},
+ {"ID":"CL-2404","Project":"Digital Experience","Owner":"Alex","Service":"EC2","Environment":"Production","Size":"t3.medium","Status":"Policy review · sample","Created":"Oct 18"},
+ {"ID":"CL-2405","Project":"Internal Tools","Owner":"Jamie","Service":"S3","Environment":"Development","Size":"Standard","Status":"Provisioned · sample","Created":"Oct 18"}]
+if "decisions" not in st.session_state:st.session_state.decisions=[]
 
-st.sidebar.title("☁️ CloudLaunch")
-st.sidebar.caption("ENTERPRISE PLATFORM • PRODUCT PREVIEW")
-page = st.sidebar.radio("Workspace",
-    ["Overview","Service Catalog","My Requests","Approvals","Infrastructure",
-     "Pipelines","Cost & Governance","Product Architecture"], label_visibility="collapsed")
-st.sidebar.divider()
-st.sidebar.info("🛡️ PUBLIC DEMO MODE\n\nNo cloud credentials, real servers, or billable deployments. Data is illustrative or local to your session.")
-st.sidebar.caption("CloudLaunch • Built with Python, Streamlit, Terraform, Jenkins & AWS")
+def section(a,b=""):
+ st.markdown(f'<div class="section"><strong>{html.escape(a)}</strong><span>{html.escape(b)}</span></div>',unsafe_allow_html=True)
+def heading(a,b,c="CLOUD OPERATIONS"):
+ st.markdown(f'<div class="eyebrow">{html.escape(c)}</div><div class="heading">{html.escape(a)}</div><div class="subheading">{html.escape(b)}</div>',unsafe_allow_html=True)
+def frame(rows):
+ return pd.DataFrame(rows,columns=["ID","Project","Owner","Service","Environment","Size","Status","Created"])
+def chart(kind):
+ fig=go.Figure()
+ if kind=="cost":
+  d={"Compute":[340,390,410,495,470,520],"Storage":[85,91,108,104,120,135],"Network":[45,52,58,69,64,80]}
+  for name,color in zip(d,["#2563eb","#7bacee","#c6dbff"]):fig.add_bar(x=["May","Jun","Jul","Aug","Sep","Oct"],y=d[name],name=name,marker_color=color)
+  fig.update_layout(barmode="stack",legend=dict(orientation="h",y=1.2,x=0))
+ else:
+  fig.add_scatter(x=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],y=[12,17,15,22,19,27,24],mode="lines+markers",line=dict(color="#2563eb",width=3,shape="spline"),fill="tozeroy",fillcolor="rgba(37,99,235,.08)")
+ fig.update_layout(height=282,margin=dict(l=8,r=10,t=10,b=12),paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(0,0,0,0)",font=dict(color="#71819c"),xaxis=dict(showgrid=False),yaxis=dict(gridcolor="#eef2f7"),showlegend=kind=="cost")
+ return fig
 
-st.markdown("""<div class="hero"><span class="pill">PUBLIC PRODUCT PREVIEW</span>
-<h1>CloudLaunch Enterprise</h1>
-<p>One workspace to request, govern, deploy, and observe cloud infrastructure.</p>
-</div>""", unsafe_allow_html=True)
+with st.sidebar:
+ st.markdown('<div class="brand"><span class="brand-logo">C</span>CloudLaunch</div><div class="small">Enterprise Cloud Platform</div>',unsafe_allow_html=True)
+ st.write("")
+ pages=["Overview","Service Catalog","Requests","Approvals","Infrastructure","Deployments","Cost & Governance","Architecture"]
+ labels=["▦  Overview","⊞  Service Catalog","▤  Requests","✓  Approvals","◈  Infrastructure","⌁  Deployments","◉  Cost & Governance","◇  Architecture"]
+ choice=st.radio("Navigation",list(range(8)),format_func=lambda i:labels[i],label_visibility="collapsed")
+ page=pages[choice]
+ st.divider()
+ st.markdown('<div class="note"><b>● PUBLIC PRODUCT SHOWCASE</b><p style="margin-bottom:0">All assets, costs and trends are illustrative. No AWS credentials or deployment access.</p></div>',unsafe_allow_html=True)
+ st.write("")
+ st.link_button("↗ GitHub source","https://github.com/wavhalkomal/Terraform_Jenkins",use_container_width=True)
+st.markdown(f'<div class="topbar"><span>Workspace &nbsp; / &nbsp; <b>{html.escape(page)}</b></span><span class="mode">● Safe demo mode</span></div>',unsafe_allow_html=True)
 
-if page == "Overview":
-    st.subheader("Operations overview")
-    a,b,c,d = st.columns(4)
-    a.metric("Requests in this demo",len(st.session_state.requests))
-    b.metric("Provisioned examples",sum("Provisioned" in r["Status"] for r in st.session_state.requests))
-    c.metric("Duplicates prevented (examples)",sum("Duplicate" in r["Status"] for r in st.session_state.requests))
-    d.metric("Live AWS spend","Not connected")
-    st.info("Demo records below are synthetic. Historic Jenkins/AWS tests were previously verified separately; this site is not connected to those systems.")
-    left,right = st.columns([1.6,1])
-    with left:
-        st.subheader("Request activity")
-        st.dataframe(pd.DataFrame(st.session_state.requests),hide_index=True,use_container_width=True)
-    with right:
-        st.subheader("Platform capabilities")
-        st.success("✔ Employee self-service catalog")
-        st.success("✔ Duplicate-prevention design")
-        st.success("✔ Approval and workflow preview")
-        st.info("Live inventory, durable approvals, and production orchestration are planned enterprise integrations.")
+if page=="Overview":
+ st.markdown('<div class="hero"><div class="eyebrow">THE CLOUD OPERATIONS WORKSPACE</div><h1>Run infrastructure with clarity.</h1><p>One command center for cloud requests, approvals, delivery pipelines, governance and spend—designed for platform engineering teams.</p></div>',unsafe_allow_html=True)
+ a,b,c,d=st.columns(4)
+ a.metric("Showcase requests",len(st.session_state.requests),"Demo session")
+ b.metric("Provisioned examples",sum("Provisioned" in r["Status"] for r in st.session_state.requests),"Illustrative")
+ c.metric("Duplicate protections",sum("Duplicate" in r["Status"] for r in st.session_state.requests),"Illustrative")
+ d.metric("Live cloud connections","0","Not configured",delta_color="off")
+ section("Operations intelligence","Example analytics — not live data")
+ a,b=st.columns([1.2,1])
+ with a:
+  with st.container(border=True):
+   st.markdown("**Cloud spend by service**")
+   st.caption("Illustrative historical spend · USD")
+   st.plotly_chart(chart("cost"),use_container_width=True,config={"displayModeBar":False})
+ with b:
+  with st.container(border=True):
+   st.markdown("**Deployment throughput**")
+   st.caption("Illustrative weekly activity")
+   st.plotly_chart(chart("deploy"),use_container_width=True,config={"displayModeBar":False})
+ section("Recent infrastructure requests","Sample and session records")
+ st.dataframe(frame(st.session_state.requests),hide_index=True,use_container_width=True)
+ st.caption("Previous Jenkins/Terraform/AWS end-to-end tests were verified separately. This site shows simulated data only.")
 
-elif page == "Service Catalog":
-    st.subheader("Request infrastructure")
-    st.caption("Submit a simulated request. Nothing is sent to AWS, GitHub, or Jenkins.")
-    with st.form("new_request",clear_on_submit=True):
-        c1,c2 = st.columns(2)
-        name=c1.text_input("Employee name",placeholder="Your name")
-        project=c2.text_input("Project / application",placeholder="payment-api")
-        c3,c4,c5=st.columns(3)
-        env=c3.selectbox("Environment",["Development","QA","Production"])
-        size=c4.selectbox("Instance type",["t3.micro","t3.small","t3.medium"])
-        service=c5.selectbox("Service",["EC2"],help="Additional infrastructure templates are on the roadmap.")
-        purpose=st.text_area("Business justification",placeholder="Why is this infrastructure needed?")
-        submitted=st.form_submit_button("Submit demo request",type="primary",use_container_width=True)
-    if submitted:
-        if not name.strip() or not project.strip() or not purpose.strip():
-            st.error("Employee name, project, and justification are required.")
-        else:
-            duplicate=any(r["Project"].casefold()==project.strip().casefold()
-                and r["Environment"]==env and r["Service"]==service
-                and "Provisioned" in r["Status"] for r in st.session_state.requests)
-            status="Potential duplicate — review required (demo)" if duplicate else "Approval pending (demo)"
-            code="DEMO-"+uuid.uuid4().hex[:6].upper()
-            st.session_state.requests.insert(0,{"ID":code,"Project":project.strip(),"Service":service,
-                "Environment":env,"Size":size,"Status":status,"Owner":name.strip(),
-                "Created":datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")})
-            st.success(f"{code} recorded for this browser session. Status: {status}")
-            st.warning("The duplicate detection here is illustrative, not a substitute for the real AWS inventory and backend policy checks.")
-    st.markdown("#### Planned service catalog")
-    st.write("EC2 compute · S3 buckets · IAM requests · Managed databases · Container hosting · Network services")
-    st.caption("Only the EC2 form is interactive in this preview, and all submissions remain simulated.")
+elif page=="Service Catalog":
+ heading("Infrastructure service catalog","Request standardized cloud services from one managed workspace.","SELF-SERVICE INFRASTRUCTURE")
+ section("Explore available services","Compute demo interactive · other services roadmap")
+ services=[("☁","Cloud compute","Provision EC2 virtual machines with governed request flows.","DEMO AVAILABLE"),("▤","Object storage","Encrypted S3 storage with lifecycle and retention controls.","COMING SOON"),("◉","Managed databases","Standardized database delivery and compliance controls.","COMING SOON"),("⬡","Container platforms","Scale containerized services with automated provisioning.","COMING SOON"),("◇","Networking","Managed VPC, routing and connectivity requests.","COMING SOON"),("♧","Identity & access","Auditable, least-privilege identity requests.","COMING SOON")]
+ cols=st.columns(3)
+ for i,(ic,name,desc,state) in enumerate(services):
+  with cols[i%3]:
+   st.markdown(f'<div class="tile"><div class="iconbox">{ic}</div><h3>{name}</h3><p>{desc}</p><span class="chip">{state}</span></div>',unsafe_allow_html=True)
+ section("Request cloud compute","No AWS resources will be created")
+ with st.form("request_form",clear_on_submit=True):
+  a,b=st.columns(2)
+  user=a.text_input("Employee name")
+  project=b.text_input("Project / application")
+  a,b,c=st.columns(3)
+  env=a.selectbox("Environment",["Development","QA","Production"])
+  size=b.selectbox("EC2 instance type",["t3.micro","t3.small","t3.medium"])
+  region=c.selectbox("AWS region (demo)",["us-east-1","us-east-2","us-west-2"])
+  purpose=st.text_area("Business justification")
+  send=st.form_submit_button("Submit request →",type="primary",use_container_width=True)
+ if send:
+  if not all([user.strip(),project.strip(),purpose.strip()]):st.error("Complete the name, project and justification.")
+  else:
+   duplicate=any(r["Project"].casefold()==project.strip().casefold() and r["Environment"]==env and "Provisioned" in r["Status"] for r in st.session_state.requests)
+   status="Duplicate review · demo" if duplicate else "Awaiting approval · demo"
+   rid="CL-"+uuid.uuid4().hex[:6].upper()
+   st.session_state.requests.insert(0,{"ID":rid,"Project":project.strip(),"Owner":user.strip(),"Service":"EC2","Environment":env,"Size":size,"Status":status,"Created":datetime.now(timezone.utc).strftime("%b %d")})
+   st.success(f"{rid} submitted to this browser session; status: {status}. No server was created in {region}.")
 
-elif page == "My Requests":
-    st.subheader("Request center")
-    st.dataframe(pd.DataFrame(st.session_state.requests),hide_index=True,use_container_width=True)
-    st.caption("New demo submissions are stored only in your current Streamlit session and may disappear after a restart.")
-    st.download_button("Export current demo requests (CSV)",
-        pd.DataFrame(st.session_state.requests).to_csv(index=False), "cloudlaunch-demo-requests.csv","text/csv")
+elif page=="Requests":
+ heading("Request management","Search, filter and export the complete demo request lifecycle.","WORKFLOW CENTER")
+ a,b,c=st.columns(3)
+ a.metric("Total requests",len(st.session_state.requests))
+ b.metric("Pending review",sum("approval" in r["Status"] or "review" in r["Status"] for r in st.session_state.requests))
+ c.metric("Blocked duplicates",sum("Duplicate" in r["Status"] for r in st.session_state.requests))
+ section("Request register","Current visitor session")
+ a,b=st.columns([2,1])
+ query=a.text_input("Search requests",placeholder="Project, owner, request ID")
+ status=b.selectbox("Status",["All statuses"]+sorted(set(r["Status"] for r in st.session_state.requests)))
+ shown=[r for r in st.session_state.requests if (not query or query.casefold() in " ".join(map(str,r.values())).casefold()) and (status=="All statuses" or r["Status"]==status)]
+ st.dataframe(frame(shown),hide_index=True,use_container_width=True)
+ st.download_button("↓ Export filtered CSV",frame(shown).to_csv(index=False),"cloudlaunch-requests-demo.csv","text/csv")
 
-elif page == "Approvals":
-    st.subheader("Approval workspace")
-    st.warning("Preview only: this public site has no authenticated manager role. It cannot approve infrastructure.")
-    pending=[r for r in st.session_state.requests if "pending" in r["Status"].lower() or "review" in r["Status"].lower()]
-    st.dataframe(pd.DataFrame(pending) if pending else pd.DataFrame(columns=["ID","Project","Status"]),
-                 hide_index=True,use_container_width=True)
-    st.write("Enterprise version: employee → manager → platform engineer → policy check → Jenkins approval → Terraform.")
+elif page=="Approvals":
+ heading("Approval operations","Review access and compute requests through explicit governance checkpoints.","POLICY AND REVIEW")
+ st.info("Simulated decisions only. No authenticated reviewer identity and no real infrastructure approval.")
+ pending=[r for r in st.session_state.requests if "approval" in r["Status"] or "review" in r["Status"]]
+ a,b,c=st.columns(3)
+ a.metric("Pending demo reviews",len(pending))
+ b.metric("Policy escalations",sum("review" in r["Status"] for r in pending))
+ c.metric("Demo decisions",len(st.session_state.decisions))
+ section("Review queue")
+ st.dataframe(frame(pending),hide_index=True,use_container_width=True)
+ if pending:
+  with st.container(border=True):
+   opts={r["ID"]+" · "+r["Project"]:r for r in pending}
+   target=st.selectbox("Select request",list(opts))
+   note=st.text_input("Review note")
+   a,b=st.columns(2)
+   if a.button("Approve in demo",type="primary",use_container_width=True):
+    opts[target]["Status"]="Approved in demo";st.session_state.decisions.append({"Request":opts[target]["ID"],"Decision":"Approved demo","Note":note});st.rerun()
+   if b.button("Reject in demo",use_container_width=True):
+    opts[target]["Status"]="Rejected in demo";st.session_state.decisions.append({"Request":opts[target]["ID"],"Decision":"Rejected demo","Note":note});st.rerun()
+ if st.session_state.decisions:
+  section("Session decision log");st.dataframe(pd.DataFrame(st.session_state.decisions),hide_index=True,use_container_width=True)
 
-elif page == "Infrastructure":
-    st.subheader("Infrastructure inventory")
-    st.info("Live AWS inventory is intentionally disconnected. Previously created test EC2 instances were deleted to avoid charges.")
-    st.metric("Live EC2 inventory","Not connected")
-    st.metric("Last verified AWS sync","Not available")
-    st.write("Enterprise edition will include live EC2 state, tags, owner, region, health, drift, and safe lifecycle actions.")
+elif page=="Infrastructure":
+ heading("Infrastructure explorer","Regional asset tracking and application ownership, ready for secure AWS integration.","CLOUD INVENTORY")
+ st.info("Sample resources below are fictional. Your real test EC2 instances were deleted; this app has no AWS inventory connection.")
+ a,b,c,d=st.columns(4)
+ a.metric("Sample assets",6);b.metric("Sample regions",3);c.metric("Sample teams",4);d.metric("Live AWS sync","Offline")
+ section("Asset inventory","Example records only")
+ assets=pd.DataFrame([
+ ["payments-api-dev","EC2","us-east-1","Development","Running · sample","Payments"],
+ ["analytics-worker","EC2","us-east-2","QA","Running · sample","Analytics"],
+ ["customer-web-prod","EC2","us-east-1","Production","Running · sample","Digital"],
+ ["batch-processor","EC2","us-west-2","Development","Stopped · sample","Finance"],
+ ["payments-artifacts","S3","us-east-1","Development","Configured · sample","Payments"],
+ ["analytics-storage","S3","us-east-2","Production","Configured · sample","Analytics"]],
+ columns=["Asset","Service","Region","Environment","Status","Project"])
+ a,b=st.columns(2)
+ region=a.selectbox("Region",["All"]+list(assets.Region.unique()))
+ env=b.selectbox("Environment",["All"]+list(assets.Environment.unique()))
+ if region!="All":assets=assets[assets.Region==region]
+ if env!="All":assets=assets[assets.Environment==env]
+ st.dataframe(assets,hide_index=True,use_container_width=True)
+ section("Planned connectivity")
+ st.markdown('<div class="workflow"><span>Secure AWS APIs</span><b>→</b><span>Read-only inventory</span><b>→</b><span>Policy engine</span><b>→</b><span>Asset dashboard</span></div>',unsafe_allow_html=True)
 
-elif page == "Pipelines":
-    st.subheader("Automation & deployment pipelines")
-    st.success("Previously verified: GitHub merge → Jenkins dispatch → Python tests → AWS duplicate check.")
-    st.code("cloudlaunch-dispatch → cloudlaunch-cd → duplicate policy → Terraform plan → approval → apply")
-    st.info("This site cannot currently read local Jenkins build logs or trigger builds. Integration requires a secure backend accessible to the hosted app.")
-    st.link_button("Open source repository","https://github.com/wavhalkomal/Terraform_Jenkins")
+elif page=="Deployments":
+ heading("Delivery pipelines","A unified record of CI checks, approval gates and Terraform activity.","DEVOPS ORCHESTRATION")
+ a,b,c,d=st.columns(4)
+ a.metric("Historical unit tests",43,"Passed")
+ b.metric("Actual EC2 test","Verified","Historical")
+ c.metric("Duplicate guard","Verified","Historical")
+ d.metric("Live Jenkins status","Offline")
+ section("Deployment architecture","Real tests previously completed; integration not live")
+ st.markdown('<div class="tile"><h3>End-to-end controlled deployment</h3><div class="workflow"><span>GitHub PR</span><b>→</b><span>CI checks</span><b>→</b><span>Jenkins dispatch</span><b>→</b><span>AWS duplicate check</span><b>→</b><span>Terraform plan</span><b>→</b><span>Approval</span><b>→</b><span>Apply</span></div></div>',unsafe_allow_html=True)
+ section("Historical verification","Prior Jenkins logs")
+ st.dataframe(pd.DataFrame([
+ ["New EC2 request","Completed","Human approval + Terraform apply"],
+ ["Second employee duplicate","Blocked intentionally","No extra EC2 created"],
+ ["Automatic SCM triggering","Completed","Dispatcher queued downstream CI/CD"],
+ ["Automatic duplicate request","Blocked intentionally","Apply stage skipped"]],columns=["Scenario","Observed outcome","Evidence summary"]),hide_index=True,use_container_width=True)
+ st.link_button("View Jenkins pipeline code","https://github.com/wavhalkomal/Terraform_Jenkins")
+ st.caption("A public Streamlit site cannot access Jenkins on your Mac's localhost. Production integration requires authenticated backend services.")
 
-elif page == "Cost & Governance":
-    st.subheader("Cloud cost & governance")
-    st.metric("Live AWS charges","Not connected")
-    st.info("No AWS Cost Explorer account access is configured on this public demo.")
-    st.write("Planned controls: project budgets, cost estimates before approval, duplicate resource policies, spend alerts, expiring development instances and audit trails.")
-    st.warning("Public demo submissions do not launch infrastructure or incur EC2 costs.")
+elif page=="Cost & Governance":
+ heading("Cloud financial operations","Control costs and avoid duplicate, idle or unowned infrastructure.","FINOPS + GOVERNANCE")
+ st.info("Every chart and financial amount below is illustrative; real AWS billing is not connected.")
+ a,b,c,d=st.columns(4)
+ a.metric("Illustrative monthly spend","$735")
+ b.metric("Illustrative forecast","$810")
+ c.metric("Demo duplicate checks","1")
+ d.metric("Cost Explorer connection","Offline")
+ a,b=st.columns([1.4,1])
+ with a:
+  with st.container(border=True):
+   st.markdown("**Sample cost composition**");st.caption("Example monthly service costs · USD")
+   st.plotly_chart(chart("cost"),use_container_width=True,config={"displayModeBar":False})
+ with b:
+  with st.container(border=True):
+   st.markdown("**Governance policy catalog**")
+   for name,state in [("Project ownership","Design ready"),("Duplicate protection","Backend tested"),("Spend alerts","Planned"),("Budget approvals","Planned"),("Idle server cleanup","Planned")]:
+    st.markdown(f"**{name}** — {state}")
+ st.caption("Only approved, authenticated backends should perform cloud actions or report real company costs.")
 
 else:
-    st.subheader("Enterprise product architecture")
-    st.code("""Streamlit frontend (public demo / employee portal)
-            ↓ HTTPS + authentication
-FastAPI backend (roles, API, audit policy)
-            ↓
-PostgreSQL + durable workflow queue
-            ↓
-Jenkins / GitHub / Terraform deployment workers
-            ↓
-AWS EC2 / S3 / IAM / CloudWatch / Cost Explorer
-            ↖ live read-only status sync into portal""",language="text")
-    st.markdown("**Available now:** tested Python/AWS duplicate-detection and Jenkins/Terraform automation.")
-    st.markdown("**Next implementation phase:** authenticated APIs, persistent data, secure deployment triggers, real resource sync, complete audits, reliability controls.")
-    st.link_button("View repository","https://github.com/wavhalkomal/Terraform_Jenkins")
+ heading("Product architecture","A secure modular architecture, built on top of the tested CloudLaunch automation engine.","ENGINEERING FOUNDATION")
+ layers=[
+ ("01","Streamlit experience","Public product UI and self-service forms · demo available"),
+ ("02","FastAPI + enterprise SSO","Secure APIs, user roles and authorization · planned"),
+ ("03","PostgreSQL + durable workflows","Persistent tickets, retry handling and audit trail · planned"),
+ ("04","Jenkins + Terraform + boto3","Automated infrastructure provisioning and duplicate checks · independently tested"),
+ ("05","AWS observability + FinOps","Live health, inventory and billing · planned")]
+ for num,name,desc in layers:
+  st.markdown(f'<div class="tile" style="min-height:85px;padding:16px"><span class="chip">{num}</span><h3 style="display:inline;margin-left:12px">{name}</h3><p style="margin:9px 0 0">{desc}</p></div>',unsafe_allow_html=True)
+ st.info("The production enterprise platform requires an authenticated, persistent backend. Streamlit Community Cloud is used for a no-cost public showcase.")
+
+st.markdown('<div class="small" style="text-align:center;margin-top:35px">© 2026 CLOUDLAUNCH · INTERACTIVE PUBLIC PREVIEW · NO REAL CLOUD DEPLOYMENTS</div>',unsafe_allow_html=True)
