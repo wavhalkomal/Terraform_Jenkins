@@ -1,0 +1,11 @@
+{
+  "request_id": "REQ-2002",
+  "employee_id": "another-developer",
+  "project_id": "cloudlaunch-training-2026",
+  "task_id": "task-2001",
+  "workload": "cloudlaunch-web",
+  "environment": "dev",
+  "region": "us-east-1",
+  "instance_type": "t3.small",
+  "ami_id": "ami-02a9cdd4e98bc3c78"
+}
