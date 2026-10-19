@@ -5,6 +5,11 @@ from datetime import datetime, timezone
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from cloudlaunch_portal.github_status import fetch_workflows
+
+@st.cache_data(ttl=90, show_spinner=False)
+def github_status():
+ return fetch_workflows()
 
 st.set_page_config(page_title="CloudLaunch Enterprise",page_icon="☁️",layout="wide",initial_sidebar_state="expanded")
 st.markdown("""<style>
@@ -85,7 +90,7 @@ with st.sidebar:
  st.markdown('<div class="note"><b>CLOUDLAUNCH PLATFORM STATUS</b><p style="margin-bottom:0">AWS infrastructure provisioning, Jenkins CI/CD automation, and duplicate prevention were implemented and tested with real AWS. Live infrastructure monitoring and deployment controls are not yet connected to this web portal. Sample cost charts and inventory are illustrative.</p></div>',unsafe_allow_html=True)
  st.write("")
  st.link_button("↗ GitHub source","https://github.com/wavhalkomal/Terraform_Jenkins",use_container_width=True)
-st.markdown(f'<div class="topbar"><span>Workspace &nbsp; / &nbsp; <b>{html.escape(page)}</b></span><span class="mode">Hosted integrations not connected</span></div>',unsafe_allow_html=True)
+st.markdown(f'<div class="topbar"><span>Workspace &nbsp; / &nbsp; <b>{html.escape(page)}</b></span><span class="mode">GitHub public API · AWS/Jenkins connection pending</span></div>',unsafe_allow_html=True)
 
 if page=="Overview":
  st.markdown('<div class="hero"><div class="eyebrow">THE CLOUD OPERATIONS WORKSPACE</div><h1>Run infrastructure with clarity.</h1><p>One command center for cloud requests, approvals, delivery pipelines, governance and spend—designed for platform engineering teams.</p></div>',unsafe_allow_html=True)
@@ -93,7 +98,9 @@ if page=="Overview":
  a.metric("Showcase requests",len(st.session_state.requests),"Demo session")
  b.metric("Provisioned examples",sum("Provisioned" in r["Status"] for r in st.session_state.requests),"Illustrative")
  c.metric("Duplicate protections",sum("Duplicate" in r["Status"] for r in st.session_state.requests),"Illustrative")
- d.metric("Hosted integrations","Not connected")
+ gh=github_status()
+ d.metric("GitHub Actions API","Connected" if gh["connected"] else "Unavailable")
+ st.caption("GitHub Actions status is retrieved live. Example infrastructure and financial values are not live.")
  section("Operations intelligence","Example analytics — not live data")
  a,b=st.columns([1.2,1])
  with a:
@@ -217,7 +224,18 @@ elif page=="Deployments":
  ["Automatic SCM triggering","Completed","Dispatcher queued downstream CI/CD"],
  ["Automatic duplicate request","Blocked intentionally","Apply stage skipped"]],columns=["Scenario","Observed outcome","Evidence summary"]),hide_index=True,use_container_width=True)
  st.link_button("View Jenkins pipeline code","https://github.com/wavhalkomal/Terraform_Jenkins")
- st.caption("A public Streamlit site cannot access Jenkins on your Mac's localhost. Production integration requires authenticated backend services.")
+ section("Live GitHub Actions","Read-only API · refreshes every 90 seconds")
+ gh=github_status()
+ if gh["connected"]:
+  st.success("Connected to the public GitHub Actions API. These are real workflow runs.")
+  if gh["runs"]:
+   st.dataframe(pd.DataFrame(gh["runs"]),hide_index=True,use_container_width=True,
+                column_config={"Run URL":st.column_config.LinkColumn("Open run")})
+  else:
+   st.info("No workflow runs found.")
+ else:
+  st.warning(gh["error"] or "GitHub API unavailable")
+ st.caption("GitHub Actions results are live; Jenkins on your Mac and AWS are not connected to this portal.")
 
 elif page=="Cost & Governance":
  heading("Cloud financial operations","Control costs and avoid duplicate, idle or unowned infrastructure.","FINOPS + GOVERNANCE")
