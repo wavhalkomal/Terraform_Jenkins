@@ -1,0 +1,23 @@
+name: Terraform validation
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive
+      - name: Check deployment script syntax
+        run: bash -n post_deployment_check.sh
+      - name: Initialize providers without a state backend
+        run: terraform init -backend=false -input=false -lockfile=readonly -no-color
+      - name: Validate Terraform configuration
+        run: terraform validate -no-color

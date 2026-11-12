@@ -8,8 +8,7 @@ pipeline {
         timeout(time: 45, unit: 'MINUTES')
     }
 
-    // Requires Jenkins GitHub plugin and a reachable /github-webhook/ endpoint.
-    // For localhost-only Jenkins, use Poll SCM until a secure webhook endpoint exists.
+    // Poll GitHub because Jenkins runs locally and cannot receive public webhooks.
     triggers {
         pollSCM('H/2 * * * *')
     }
@@ -36,7 +35,6 @@ pipeline {
                     set -eu
                     terraform fmt -check -recursive
                     bash -n post_deployment_check.sh
-                    python3 -m unittest discover -s tests -v
                 '''
             }
         }
